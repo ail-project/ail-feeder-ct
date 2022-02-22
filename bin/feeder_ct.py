@@ -24,9 +24,9 @@ if 'ail' in config:
     ail_key = config['ail']['apikey']
 
 if 'redis' in config:
-    red = redis.Redis(host=config['redis']['host'], port=config['redis']['port'], charset="utf-8")
+    red = redis.Redis(host=config['redis']['host'], port=config['redis']['port'], charset="utf-8", decode_responses=True)
 else:
-    red = redis.Redis(host='localhost', port=6379, charset="utf-8")
+    red = redis.Redis(host='localhost', port=6379, charset="utf-8", decode_responses=True)
 
 
 
@@ -36,22 +36,22 @@ def get_ct():
     for message in sub.listen():
         if message is not None:    
             domain = message.get('data')
-            
-            domain = deleteHead(domain)
+            if domain != 1:
+                domain = deleteHead(domain)
 
-            for dm in domainList:
-                if len(domain.split(".")) >= len(dm.split(".")):
+                for dm in domainList:
+                    if len(domain.split(".")) >= len(dm.split(".")):
 
-                    reduceDm = domain.split(".")
-                    while len(reduceDm) > len(dm.split(".")):
-                        reduceDm = reduceDm[1:]
+                        reduceDm = domain.split(".")
+                        while len(reduceDm) > len(dm.split(".")):
+                            reduceDm = reduceDm[1:]
 
-                    reduceDm[-1] = reduceDm[-1].rstrip("\n")
+                        reduceDm[-1] = reduceDm[-1].rstrip("\n")
 
-                    if reduceDm == dm.split("."):
-                        print("\n!!! FIND A DOMAIN !!!")
-                        d = domain.rstrip('\n')
-                        print(f"{d} matching with {dm}")
+                        if reduceDm == dm.split("."):
+                            print("\n!!! FIND A DOMAIN !!!")
+                            d = domain.rstrip('\n')
+                            print(f"{d} matching with {dm}")
 
             
 
