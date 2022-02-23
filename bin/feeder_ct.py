@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-fd", "--filedomain", help="File containing domain name", required=True)
+    parser.add_argument("-fd", "--filedomain", help="File containing domain name. A text file is required.", required=True)
 
     args = parser.parse_args()
 
