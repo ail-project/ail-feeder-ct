@@ -1,5 +1,6 @@
 import os
 import ast
+import json
 import redis
 import base64
 import pathlib
@@ -60,23 +61,48 @@ def get_ct():
     sub = red.pubsub()    
     sub.subscribe('ct-certs', ignore_subscribe_messages=False) 
 
-    m = sub.get_message()
-    if m:
+    for m in sub.listen():
         if type(m['data']) is not int:
             cert_der = base64.b64decode(m['data'].rstrip())
-            #decode(cert_der = cert_der)
+
             x509 = X509.load_cert_string(cert_der, X509.FORMAT_DER)
             try:
                 subject = x509.get_subject().as_text()
-                print(f"subject: {subject}")
+                subject = subject.replace("CN=", "")
             except:
+                subject = ""
                 pass
 
             try:
                 cAltName = x509.get_ext('subjectAltName').get_value()
-                print(f"cAltName: {cAltName}")
+                cAltName = cAltName.replace("DNS:", "").split(", ")
             except LookupError:
                 cAltName = ""
+
+            all_domains = list()
+            if subject:
+                all_domains.append(subject)
+            if cAltName:
+                for aName in cAltName:
+                    all_domains.append(aName)
+
+            for domain in all_domains:
+                domain = deleteHead(domain)
+
+                for dm in domainList:
+                    if len(domain.split(".")) >= len(dm.split(".")):
+
+                        reduceDm = domain.split(".")
+                        while len(reduceDm) > len(dm.split(".")):
+                            reduceDm = reduceDm[1:]
+
+                        reduceDm[-1] = reduceDm[-1].rstrip("\n")
+
+                        if reduceDm == dm.split("."):
+                            print("\n!!! FIND A DOMAIN !!!")
+                            d = domain.rstrip('\n')
+                            print(f"{d} matching with {dm}")
+        
 
 
 
