@@ -1,9 +1,11 @@
 import os
 import ast
 import redis
+import base64
 import pathlib
 import argparse
 import configparser
+from M2Crypto import X509
 
 pathProg = pathlib.Path(__file__).parent.absolute()
 
@@ -31,9 +33,9 @@ else:
 
 
 
-def get_ct():    
+"""def get_ct():    
     sub = red.pubsub()    
-    sub.subscribe('ct-certs')    
+    sub.subscribe('ct-certs', ignore_subscribe_messages=False)    
     for message in sub.listen():
         if message is not None and message.get('data') != 1:    
             domains = ast.literal_eval(message.get('data'))
@@ -52,7 +54,30 @@ def get_ct():
                         if reduceDm == dm.split("."):
                             print("\n!!! FIND A DOMAIN !!!")
                             d = domain.rstrip('\n')
-                            print(f"{d} matching with {dm}")
+                            print(f"{d} matching with {dm}")"""
+
+def get_ct():
+    sub = red.pubsub()    
+    sub.subscribe('ct-certs', ignore_subscribe_messages=False) 
+
+    m = sub.get_message()
+    if m:
+        if type(m['data']) is not int:
+            cert_der = base64.b64decode(m['data'].rstrip())
+            #decode(cert_der = cert_der)
+            x509 = X509.load_cert_string(cert_der, X509.FORMAT_DER)
+            try:
+                subject = x509.get_subject().as_text()
+                print(f"subject: {subject}")
+            except:
+                pass
+
+            try:
+                cAltName = x509.get_ext('subjectAltName').get_value()
+                print(f"cAltName: {cAltName}")
+            except LookupError:
+                cAltName = ""
+
 
 
 # If domain begin with * or www

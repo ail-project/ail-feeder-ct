@@ -40,10 +40,15 @@ def print_callback(message, context):
 
         if len(all_domains) != 0:
 
-            sys.stdout.write(u"[{}] {} (SAN: {})\n".format(datetime.datetime.now().strftime('%m/%d/%y %H:%M:%S'), all_domains[0], ", ".join(all_domains[1:])))
+            """sys.stdout.write(u"[{}] {} (SAN: {})\n".format(datetime.datetime.now().strftime('%m/%d/%y %H:%M:%S'), all_domains[0], ", ".join(all_domains[1:])))
        
             r.publish('ct-certs', u"{}\n".format(all_domains))
-        sys.stdout.flush()
+        sys.stdout.flush()"""
+
+            sys.stdout.write(u"[{}] {} (SAN: {})\n".format(datetime.datetime.now().strftime('%m/%d/%y %H:%M:%S'), all_domains[0], ", ".join(all_domains[1:])))
+            cert_der = str(message['data']['leaf_cert']['as_der'])
+            r.publish('ct-certs', u"{}\n".format(cert_der))
+            sys.stdout.flush()
         
 
 certstream.listen_for_events(print_callback, url='ws://crd.circl.lu:4000/full-stream')
