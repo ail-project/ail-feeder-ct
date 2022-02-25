@@ -38,14 +38,11 @@ def print_callback(message, context):
         all_domains = message['data']['leaf_cert']['all_domains']
 
 
-        if len(all_domains) == 0:
-            domain = "NULL"
-        else:
-            domain = all_domains[0]
+        if len(all_domains) != 0:
 
-            sys.stdout.write(u"[{}] {} (SAN: {})\n".format(datetime.datetime.now().strftime('%m/%d/%y %H:%M:%S'), domain, ", ".join(message['data']['leaf_cert']['all_domains'][1:])))
+            sys.stdout.write(u"[{}] {} (SAN: {})\n".format(datetime.datetime.now().strftime('%m/%d/%y %H:%M:%S'), all_domains[0], ", ".join(all_domains[1:])))
        
-            r.publish('ct-certs', u"{}\n".format(domain))
+            r.publish('ct-certs', u"{}\n".format(all_domains))
         sys.stdout.flush()
         
 

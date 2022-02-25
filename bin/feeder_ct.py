@@ -1,4 +1,5 @@
 import os
+import ast
 import redis
 import pathlib
 import argparse
@@ -34,9 +35,9 @@ def get_ct():
     sub = red.pubsub()    
     sub.subscribe('ct-certs')    
     for message in sub.listen():
-        if message is not None:    
-            domain = message.get('data')
-            if domain != 1:
+        if message is not None and message.get('data') != 1:    
+            domains = ast.literal_eval(message.get('data'))
+            for domain in domains:
                 domain = deleteHead(domain)
 
                 for dm in domainList:
@@ -53,7 +54,6 @@ def get_ct():
                             d = domain.rstrip('\n')
                             print(f"{d} matching with {dm}")
 
-            
 
 # If domain begin with * or www
 def deleteHead(domain):
