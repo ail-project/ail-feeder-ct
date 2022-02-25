@@ -14,6 +14,14 @@ For the generation of domain name variations: [ail-typo-squatting](https://githu
 
 
 
+# How to run
+
+The program need to run two script to be functional, `bin/ct.py` and `bin/feeder_ct.py`. 
+
+The first one will publish ct informations on a redis db and the other one will subscribe to the channel and use any entry to compare with a list of variations of domain name. Redis pub/sub is used here. 
+
+If a variation match with an entry from redis db, then the variation is send to AIL to crawl the website.
+
 # Usage
 
 ~~~~shell

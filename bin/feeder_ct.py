@@ -73,20 +73,26 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-fd", "--filedomain", help="File containing domain name. A text file is required.", required=True)
+    parser.add_argument("-fd", "--filedomain", help="File containing domain name. A text file is required.")
+    parser.add_argument("-dn", "--domainName", nargs="+", help="list of domain name")
 
     args = parser.parse_args()
 
-
-    if args.filedomain.split(".")[-1] != "txt":
-        print("[-] File need to be text")
-        exit(-1)
-
-
     domainList = list()
-    with open(args.filedomain, "r") as read_file:
-        for lines in read_file.readlines():
-            domainList.append(lines.rstrip("\n"))
+
+    if args.filedomain:
+        if args.filedomain.split(".")[-1] != "txt":
+            print("[-] File need to be text")
+            exit(-1)
+
+        with open(args.filedomain, "r") as read_file:
+            for lines in read_file.readlines():
+                domainList.append(lines.rstrip("\n"))
+    elif args.domainName:
+        domainList = args.domainName
+    else:
+        print("[-] No domain name given")
+        exit(-1)
 
 
     """with open("./ct_domain.txt", "r") as read_file:
