@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
     domainList = list()
 
-    verbose = args.verbose
+    verbose = args.v
 
     pathOutput = args.output
     if not pathOutput:
