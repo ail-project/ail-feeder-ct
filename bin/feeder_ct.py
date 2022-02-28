@@ -48,7 +48,7 @@ def jsonCreation(all_domains, domainMatching, variationMatching, certificat):
     json_output["variation_matching"] = variationMatching
 
     with open(os.path.join(pathOutput, domainMatching), "w") as write_file:
-        json.dumps(json_output, write_file)
+        json.dump(json_output, write_file)
 
 
 def get_ct():
@@ -63,9 +63,10 @@ def get_ct():
             try:
                 subject = x509.get_subject().as_text()
                 subject = subject.replace("CN=", "")
+                # subject contain C, ST, O ...
+                subject = subject.split(" ")[-1]
             except:
                 subject = ""
-                pass
 
             try:
                 cAltName = x509.get_ext('subjectAltName').get_value()
@@ -93,9 +94,10 @@ def get_ct():
                         reduceDm[-1] = reduceDm[-1].rstrip("\n")
 
                         if reduceDm == dm.split("."):
-                            print("\n!!! FIND A DOMAIN !!!")
-                            d = domain.rstrip('\n')
-                            print(f"{d} matching with {dm}")
+                            if verbose:
+                                print("\n!!! FIND A DOMAIN !!!")
+                                d = domain.rstrip('\n')
+                                print(f"{d} matching with {dm}")
                             jsonCreation(all_domains, domain, dm, m['data'].rstrip())
         
 
@@ -123,10 +125,13 @@ if __name__ == "__main__":
     parser.add_argument("-dn", "--domainName", nargs="+", help="list of domain name")
 
     parser.add_argument("-o", "--output", help="path to ouput location, default: ../output")
+    parser.add_argument("-v", help="verbose, more display", action="store_true")
 
     args = parser.parse_args()
 
     domainList = list()
+
+    verbose = args.verbose
 
     pathOutput = args.output
     if not pathOutput:
