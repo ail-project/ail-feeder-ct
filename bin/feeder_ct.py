@@ -7,6 +7,8 @@ import base64
 import pathlib
 import argparse
 import configparser
+import dns.name
+import dns.resolver
 from M2Crypto import X509
 
 pathProg = pathlib.Path(__file__).parent.absolute()
@@ -40,15 +42,45 @@ else:
     red = redis.Redis(host='localhost', port=6379, charset="utf-8", decode_responses=True)
 
 
-def jsonCreation(all_domains, domainMatching, variationMatching, certificat):
+def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns_resolve):
     json_output = dict()
     json_output["certificat"] = certificat
     json_output["domains"] = all_domains
     json_output["domain_matching"] = domainMatching
     json_output["variation_matching"] = variationMatching
+    
+    if dns_resolve:
+        json_output["dns_resolve"] = dns_resolve
 
     with open(os.path.join(pathOutput, domainMatching), "w") as write_file:
         json.dump(json_output, write_file)
+
+def dnsResolver(domain):
+    n = dns.name.from_text(domain)
+    domain_resolve = dict()
+    resolver = dns.resolver.Resolver()
+    resolver.timeout = 0.2
+    resolver.lifetime = 0.2
+
+    try:
+        answer = resolver.resolve(n, "A")
+        ip = list()
+        for rdata in answer:
+            ip.append(rdata.to_text())
+        domain_resolve["ipv4"] = ip
+    except:
+        pass
+
+    try:
+        answer = resolver.resolve(n, "AAAA")
+        ipv6 = list()
+        for rdata in answer:
+            ipv6.append(rdata.to_text())
+        domain_resolve["ipv6"] = ipv6
+    except:
+        pass
+
+    return domain_resolve
 
 
 def get_ct():
@@ -94,13 +126,14 @@ def get_ct():
                         reduceDm[-1] = reduceDm[-1].rstrip("\n")
 
                         if reduceDm == dm.split("."):
+                            dns_resolve = dict()
                             if verbose:
                                 print("\n!!! FIND A DOMAIN !!!")
                                 d = domain.rstrip('\n')
                                 print(f"{d} matching with {dm}")
-                            jsonCreation(all_domains, domain, dm, m['data'].rstrip())
+                                dns_resolve = dnsResolver(domain)
+                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve)
         
-
 
 
 # If domain begin with * or www
@@ -114,6 +147,7 @@ def deleteHead(domain):
 
         return locDomain
     return domain
+
 
 
 
@@ -151,25 +185,6 @@ if __name__ == "__main__":
     else:
         print("[-] No domain name given")
         exit(-1)
-
-
-    """with open("./ct_domain.txt", "r") as read_file:
-        for domain in read_file.readlines():
-            domain = deleteHead(domain)
-
-            for dm in domainList:
-                if len(domain.split(".")) >= len(dm.split(".")):
-
-                    reduceDm = domain.split(".")
-                    while len(reduceDm) > len(dm.split(".")):
-                        reduceDm = reduceDm[1:]
-
-                    reduceDm[-1] = reduceDm[-1].rstrip("\n")
-
-                    if reduceDm == dm.split("."):
-                        print("\n!!! FIND A DOMAIN !!!")
-                        d = domain.rstrip('\n')
-                        print(f"{d} matching with {dm}")"""
 
     while True:
         get_ct()
