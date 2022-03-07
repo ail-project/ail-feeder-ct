@@ -1,9 +1,6 @@
 [general]
 uuid = 1b43a925-a58e-4716-897f-bbbb9eb3ea9a
 
-[cache]
-expire = 86400
-
 [ail]
 url = https://127.0.0.1:7020/api/v1/import/json/item
 apikey = <YOURAPIKEY> 
@@ -12,3 +9,6 @@ apikey = <YOURAPIKEY>
 host = 127.0.0.1
 port = 6379
 db = 0
+
+[certstream]
+url = 
