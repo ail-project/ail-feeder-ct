@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import json
+import math
 import redis
 import base64
 import pathlib
@@ -9,6 +10,7 @@ import argparse
 import configparser
 import dns.name
 import dns.resolver
+from ail_typo_squatting import runAll
 from M2Crypto import X509
 
 pathProg = pathlib.Path(__file__).parent.absolute()
@@ -42,6 +44,10 @@ else:
     red = redis.Redis(host='localhost', port=6379, charset="utf-8", decode_responses=True)
 
 
+common_names = ['www', 'mail', '', 'host', 'router', 'ns', 'gw', 'server', 'gateway']
+
+
+
 def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns_resolve):
     json_output = dict()
     json_output["certificat"] = certificat
@@ -55,30 +61,54 @@ def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns
     with open(os.path.join(pathOutput, domainMatching), "w") as write_file:
         json.dump(json_output, write_file)
 
+
 def dnsResolver(domain):
-    n = dns.name.from_text(domain)
+
     domain_resolve = dict()
+
     resolver = dns.resolver.Resolver()
     resolver.timeout = 0.2
     resolver.lifetime = 0.2
+    
+    if domain.startswith('*'):
+        for common_name in common_names:
+            dns_to_query = domain.replace("*", common_name)
+            try:
+                answer = resolver.resolve(dns_to_query, "A")
+                ip = list()
+                for rdata in answer:
+                    ip.append(rdata.to_text())
+                domain_resolve["ipv4"] = ip
+            except:
+                pass
 
-    try:
-        answer = resolver.resolve(n, "A")
-        ip = list()
-        for rdata in answer:
-            ip.append(rdata.to_text())
-        domain_resolve["ipv4"] = ip
-    except:
-        pass
+            try:
+                answer = resolver.resolve(dns_to_query, "AAAA")
+                ipv6 = list()
+                for rdata in answer:
+                    ipv6.append(rdata.to_text())
+                domain_resolve["ipv6"] = ipv6
+            except:
+                pass
 
-    try:
-        answer = resolver.resolve(n, "AAAA")
-        ipv6 = list()
-        for rdata in answer:
-            ipv6.append(rdata.to_text())
-        domain_resolve["ipv6"] = ipv6
-    except:
-        pass
+    else:
+        try:
+            answer = resolver.resolve(domain, "A")
+            ip = list()
+            for rdata in answer:
+                ip.append(rdata.to_text())
+            domain_resolve["ipv4"] = ip
+        except:
+            pass
+
+        try:
+            answer = resolver.resolve(domain, "AAAA")
+            ipv6 = list()
+            for rdata in answer:
+                ipv6.append(rdata.to_text())
+            domain_resolve["ipv6"] = ipv6
+        except:
+            pass
 
     return domain_resolve
 
@@ -114,9 +144,9 @@ def get_ct():
                     all_domains.append(aName)
 
             for domain in all_domains:
-                domain = deleteHead(domain)
+                # domain = deleteHead(domain)
 
-                for dm in domainList:
+                for dm in resultList:
                     if len(domain.split(".")) >= len(dm.split(".")):
 
                         reduceDm = domain.split(".")
@@ -155,8 +185,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-fd", "--filedomain", help="File containing domain name. A text file is required.")
     parser.add_argument("-dn", "--domainName", nargs="+", help="list of domain name")
+    parser.add_argument("-fdn", "--filedomainName", help="file containing list of domain name")
 
     parser.add_argument("-o", "--output", help="path to ouput location, default: ../output")
     parser.add_argument("-v", help="verbose, more display", action="store_true")
@@ -172,12 +202,8 @@ if __name__ == "__main__":
         if not os.path.isdir(pathWork + "output"):
             os.mkdir(pathWork + "output")
 
-    if args.filedomain:
-        if args.filedomain.split(".")[-1] != "txt":
-            print("[-] File need to be text")
-            exit(-1)
-
-        with open(args.filedomain, "r") as read_file:
+    if args.filedomainName:
+        with open(args.filedomainName, "r") as read_file:
             for lines in read_file.readlines():
                 domainList.append(lines.rstrip("\n"))
     elif args.domainName:
@@ -185,6 +211,12 @@ if __name__ == "__main__":
     else:
         print("[-] No domain name given")
         exit(-1)
+
+    resultList = list()
+
+    for domain in domainList:
+        resultList = runAll(domain, math.inf, formatoutput="text", pathOutput=os.devnull, verbose=False)
+    
 
     while True:
         get_ct()
