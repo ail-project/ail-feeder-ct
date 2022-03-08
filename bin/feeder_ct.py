@@ -5,6 +5,7 @@ import json
 import math
 import redis
 import base64
+import shutil
 import pathlib
 import argparse
 import configparser
@@ -18,8 +19,7 @@ pathProg = pathlib.Path(__file__).parent.absolute()
 pathWork = ""
 for i in re.split(r"/|\\", str(pathProg))[:-1]:
     pathWork += i + "/"
-pathEtc = pathWork + "etc"
-sys.path.append(pathEtc)
+
 
 ## Config
 pathConf = '../etc/ail-feeder-ct.cfg'
@@ -58,6 +58,8 @@ def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns
     if dns_resolve:
         json_output["dns_resolve"] = dns_resolve
 
+    domainMatching = deleteHead(domainMatching)
+
     with open(os.path.join(pathOutput, domainMatching), "w") as write_file:
         json.dump(json_output, write_file)
 
@@ -71,25 +73,33 @@ def dnsResolver(domain):
     resolver.lifetime = 0.2
     
     if domain.startswith('*'):
+        ip = dict()
+        ipv6 = dict()
         for common_name in common_names:
             dns_to_query = domain.replace("*", common_name)
+            if common_name == "":
+                dns_to_query = dns_to_query[1:]
             try:
                 answer = resolver.resolve(dns_to_query, "A")
-                ip = list()
+                
+                ip[dns_to_query] = list()
                 for rdata in answer:
-                    ip.append(rdata.to_text())
-                domain_resolve["ipv4"] = ip
+                    ip[dns_to_query].append(rdata.to_text())
             except:
                 pass
 
             try:
                 answer = resolver.resolve(dns_to_query, "AAAA")
-                ipv6 = list()
+
+                ipv6[dns_to_query] = list()
                 for rdata in answer:
-                    ipv6.append(rdata.to_text())
-                domain_resolve["ipv6"] = ipv6
+                    ipv6[dns_to_query].append(rdata.to_text())
             except:
                 pass
+        if ip:
+            domain_resolve["ipv4"] = ip
+        if ipv6:
+            domain_resolve["ipv6"] = ipv6
 
     else:
         try:
@@ -144,8 +154,6 @@ def get_ct():
                     all_domains.append(aName)
 
             for domain in all_domains:
-                # domain = deleteHead(domain)
-
                 for dm in resultList:
                     if len(domain.split(".")) >= len(dm.split(".")):
 
@@ -166,9 +174,9 @@ def get_ct():
         
 
 
-# If domain begin with * or www
+# If domain begin with *
 def deleteHead(domain):
-    if domain.split(".")[0] == "*" or domain.split(".")[0] == "www":
+    if domain.split(".")[0] == "*":
         locDomain = ""
         for element in domain.split(".")[1:]:
             locDomain += element + "."
@@ -187,6 +195,8 @@ if __name__ == "__main__":
 
     parser.add_argument("-dn", "--domainName", nargs="+", help="list of domain name")
     parser.add_argument("-fdn", "--filedomainName", help="file containing list of domain name")
+
+    parser.add_argument("-ats", "--ail_typo_squatting", help="Generate Variations for list pass in entry", action="store_true")
 
     parser.add_argument("-o", "--output", help="path to ouput location, default: ../output")
     parser.add_argument("-v", help="verbose, more display", action="store_true")
@@ -213,10 +223,20 @@ if __name__ == "__main__":
         exit(-1)
 
     resultList = list()
-
-    for domain in domainList:
-        resultList = runAll(domain, math.inf, formatoutput="text", pathOutput=os.devnull, verbose=False)
     
+
+    if args.ail_typo_squatting:
+        pathTrash = pathWork + "trash"
+        if not os.path.isdir(pathTrash):
+            os.mkdir(pathTrash)
+
+        for domain in domainList:
+            print(f"\n **** Variations Generations for {domain} ****")
+            resultList = runAll(domain, math.inf, formatoutput="text", pathOutput=pathTrash, verbose=False)
+        
+        shutil.rmtree(pathTrash)
+    else:
+        resultList = domainList
 
     while True:
         get_ct()
