@@ -127,6 +127,8 @@ def dnsResolver(domain):
 
 
 def get_ct():
+    global sub, red
+
     try:
         m = sub.get_message()
     except:
