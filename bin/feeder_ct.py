@@ -43,6 +43,9 @@ if 'redis' in config:
 else:
     red = redis.Redis(host='localhost', port=6379, charset="utf-8", decode_responses=True)
 
+sub = red.pubsub()    
+sub.subscribe('ct-certs', ignore_subscribe_messages=False) 
+
 
 common_names = ['www', 'mail', '', 'host', 'router', 'ns', 'gw', 'server', 'gateway']
 
@@ -124,8 +127,16 @@ def dnsResolver(domain):
 
 
 def get_ct():
-    sub = red.pubsub()    
-    sub.subscribe('ct-certs', ignore_subscribe_messages=False) 
+    try:
+        m = sub.get_message()
+    except:
+        if 'redis' in config:
+            red = redis.Redis(host=config['redis']['host'], port=config['redis']['port'], charset="utf-8", decode_responses=True)
+        else:
+            red = redis.Redis(host='localhost', port=6379, charset="utf-8", decode_responses=True)
+        sub = red.pubsub()
+        sub.subscribe('ct-certs', ignore_subscribe_messages=False)
+        m = sub.get_message()
 
     for m in sub.listen():
         if type(m['data']) is not int:
