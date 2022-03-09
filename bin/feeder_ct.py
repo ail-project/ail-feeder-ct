@@ -138,7 +138,7 @@ def get_ct():
         sub.subscribe('ct-certs', ignore_subscribe_messages=False)
         m = sub.get_message()
 
-    for m in sub.listen():
+    if m:
         if type(m['data']) is not int:
             cert_der = base64.b64decode(m['data'].rstrip())
 
