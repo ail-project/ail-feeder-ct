@@ -1,6 +1,5 @@
 import os
 import re
-import sys
 import json
 import math
 import redis
@@ -47,7 +46,9 @@ sub = red.pubsub()
 sub.subscribe('ct-certs', ignore_subscribe_messages=False) 
 
 
-common_names = ['www', 'mail', '', 'host', 'router', 'ns', 'gw', 'server', 'gateway']
+# common_names = ['www', 'mail', '', 'host', 'router', 'ns', 'gw', 'server', 'gateway']
+type_request = ['UNSPEC', 'MF', 'NSEC3PARAM', 'EUI64', 'NS', 'SPF', 'NSAP-PTR', 'MG', 'APL', 'TSIG', 'DS', 'TLSA', 'HIP', 'MINFO', 'CSYNC', 'ANY', 'RRSIG', 'CDS', 'NSAP', 'CAA', 'A', 'URI', 'A6', 'KEY', 'KX', 'EUI48', 'SSHFP', 'MAILA', 'RT', 'WKS', 'DLV', 'DNAME', 'PX', 'DHCID', 'MD', 'NULL', 'TA', 'SIG', 'NSEC3', 'MR', 'AXFR', 'CDNSKEY', 'NONE', 'MB', 'TKEY', 'RP', 'NXT', 'SRV', 'SOA', 'MX', 'GPOS', 'AFSDB', 'NAPTR', 'DNSKEY', 'TXT', 'HINFO', 'NSEC', 'IPSECKEY', 'CERT', 'X25', 'PTR', 'MAILB', 'CNAME', 'ISDN', 'AAAA', 'LOC', 'IXFR', 'OPT']
+
 
 
 
@@ -61,7 +62,7 @@ def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns
     if dns_resolve:
         json_output["dns_resolve"] = dns_resolve
 
-    domainMatching = deleteHead(domainMatching)
+    # domainMatching = deleteHead(domainMatching)
 
     with open(os.path.join(pathOutput, domainMatching), "w") as write_file:
         json.dump(json_output, write_file)
@@ -75,7 +76,17 @@ def dnsResolver(domain):
     resolver.timeout = 0.2
     resolver.lifetime = 0.2
     
-    if domain.startswith('*'):
+    for t in type_request:
+        try:
+            answer = resolver.resolve(domain, t)
+            loc = list()
+            for rdata in answer:
+                loc.append(rdata.to_text())
+            domain_resolve[t] = loc
+        except:
+            pass
+
+    """if domain.startswith('*'):
         ip = dict()
         ipv6 = dict()
         for common_name in common_names:
@@ -121,13 +132,13 @@ def dnsResolver(domain):
                 ipv6.append(rdata.to_text())
             domain_resolve["ipv6"] = ipv6
         except:
-            pass
+            pass"""
 
     return domain_resolve
 
 
 def get_ct():
-    global sub, red
+    global sub, red, matching_string
 
     try:
         m = sub.get_message()
@@ -167,8 +178,20 @@ def get_ct():
                     all_domains.append(aName)
 
             for domain in all_domains:
+                domain = deleteHead(domain)
                 for dm in resultList:
-                    if len(domain.split(".")) >= len(dm.split(".")):
+                    if matching_string:
+                        if dm in domain:
+                            dns_resolve = dict()
+                            if verbose:
+                                print("\n!!! FIND A DOMAIN !!!")
+                                d = domain.rstrip('\n')
+                                print(f"{d} matching with {dm}")
+                            dns_resolve = dnsResolver(domain)
+                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve)
+                            break
+
+                    elif len(domain.split(".")) >= len(dm.split(".")):
 
                         reduceDm = domain.split(".")
                         while len(reduceDm) > len(dm.split(".")):
@@ -182,9 +205,9 @@ def get_ct():
                                 print("\n!!! FIND A DOMAIN !!!")
                                 d = domain.rstrip('\n')
                                 print(f"{d} matching with {dm}")
-                                dns_resolve = dnsResolver(domain)
+                            dns_resolve = dnsResolver(domain)
                             jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve)
-        
+                            break
 
 
 # If domain begin with *
@@ -210,6 +233,7 @@ if __name__ == "__main__":
     parser.add_argument("-fdn", "--filedomainName", help="file containing list of domain name")
 
     parser.add_argument("-ats", "--ail_typo_squatting", help="Generate Variations for list pass in entry", action="store_true")
+    parser.add_argument("-ms", "--matching_string", help="Match domain name if variations are in the domain name in any position", action="store_true")
 
     parser.add_argument("-o", "--output", help="path to ouput location, default: ../output")
     parser.add_argument("-v", help="verbose, more display", action="store_true")
@@ -217,6 +241,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     domainList = list()
+
+    matching_string = args.matching_string
 
     verbose = args.v
 
