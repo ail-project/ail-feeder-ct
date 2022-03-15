@@ -10,10 +10,9 @@ import signal
 import pathlib
 import argparse
 import configparser
-import dns.name
 import dns.resolver
-from ail_typo_squatting import runAll
 from M2Crypto import X509
+from ail_typo_squatting import runAll
 
 pathProg = pathlib.Path(__file__).parent.absolute()
 
@@ -49,14 +48,15 @@ sub.subscribe('ct-certs', ignore_subscribe_messages=False)
 
 
 # common_names = ['www', 'mail', '', 'host', 'router', 'ns', 'gw', 'server', 'gateway']
+
+# RR
 type_request = ['UNSPEC', 'MF', 'NSEC3PARAM', 'EUI64', 'NS', 'SPF', 'NSAP-PTR', 'MG', 'APL', 'TSIG', 'DS', 'TLSA', 'HIP', 'MINFO', 'CSYNC', 'ANY', 'RRSIG', 'CDS', 'NSAP', 'CAA', 'A', 'URI', 'A6', 'KEY', 'KX', 'EUI48', 'SSHFP', 'MAILA', 'RT', 'WKS', 'DLV', 'DNAME', 'PX', 'DHCID', 'MD', 'NULL', 'TA', 'SIG', 'NSEC3', 'MR', 'AXFR', 'CDNSKEY', 'NONE', 'MB', 'TKEY', 'RP', 'NXT', 'SRV', 'SOA', 'MX', 'GPOS', 'AFSDB', 'NAPTR', 'DNSKEY', 'TXT', 'HINFO', 'NSEC', 'IPSECKEY', 'CERT', 'X25', 'PTR', 'MAILB', 'CNAME', 'ISDN', 'AAAA', 'LOC', 'IXFR', 'OPT']
 
-
-
+# Ctrl + c
 def signal_handler(sig, frame):
     sys.exit(0)
 
-
+# Json creation
 def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns_resolve):
     json_output = dict()
     json_output["certificat"] = certificat
@@ -73,6 +73,7 @@ def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns
         json.dump(json_output, write_file)
 
 
+# Dns actions
 def dnsResolver(domain):
 
     domain_resolve = dict()
@@ -163,6 +164,8 @@ def get_ct():
             cert_der = base64.b64decode(m['data'].rstrip())
 
             x509 = X509.load_cert_string(cert_der, X509.FORMAT_DER)
+
+            # Subject domain name
             try:
                 subject = x509.get_subject().as_text()
                 subject = subject.replace("CN=", "")
@@ -171,6 +174,7 @@ def get_ct():
             except:
                 subject = ""
 
+            # Alternative domain name
             try:
                 cAltName = x509.get_ext('subjectAltName').get_value()
                 cAltName = cAltName.replace("DNS:", "").split(", ")
@@ -187,31 +191,36 @@ def get_ct():
             for domain in all_domains:
                 domain = deleteHead(domain)
                 for dm in resultList:
+                    # If ms option if choose
                     if matching_string:
                         if dm in domain:
                             dns_resolve = dict()
+
                             if verbose:
                                 print("\n!!! FIND A DOMAIN !!!")
                                 d = domain.rstrip('\n')
                                 print(f"{d} matching with {dm}")
+
                             dns_resolve = dnsResolver(domain)
                             jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve)
                             break
 
                     elif len(domain.split(".")) >= len(dm.split(".")):
-
+                        # Reduce the length of domain name to match the length of variations
+                        # Here, just the end is important
                         reduceDm = domain.split(".")
                         while len(reduceDm) > len(dm.split(".")):
                             reduceDm = reduceDm[1:]
-
                         reduceDm[-1] = reduceDm[-1].rstrip("\n")
 
                         if reduceDm == dm.split("."):
                             dns_resolve = dict()
+
                             if verbose:
                                 print("\n!!! FIND A DOMAIN !!!")
                                 d = domain.rstrip('\n')
                                 print(f"{d} matching with {dm}")
+
                             dns_resolve = dnsResolver(domain)
                             jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve)
                             break
@@ -253,11 +262,13 @@ if __name__ == "__main__":
 
     verbose = args.v
 
+    # Path for json output
     pathOutput = args.output
     if not pathOutput:
         if not os.path.isdir(pathWork + "output"):
             os.mkdir(pathWork + "output")
 
+    # Domain name to process
     if args.filedomainName:
         with open(args.filedomainName, "r") as read_file:
             for lines in read_file.readlines():
@@ -270,7 +281,7 @@ if __name__ == "__main__":
 
     resultList = list()
     
-
+    # Generation of variations
     if args.ail_typo_squatting:
         pathTrash = pathWork + "trash"
         if not os.path.isdir(pathTrash):
@@ -278,11 +289,12 @@ if __name__ == "__main__":
 
         for domain in domainList:
             print(f"\n **** Variations Generations for {domain} ****")
-            resultList = runAll(domain, math.inf, formatoutput="text", pathOutput=pathTrash, verbose=False)
+            resultList = runAll(domain, math.inf, formatoutput="text", pathOutput=pathTrash, verbose=verbose)
         
         shutil.rmtree(pathTrash)
     else:
         resultList = domainList
 
+    # Call of the core function
     while True:
         get_ct()
