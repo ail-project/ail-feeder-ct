@@ -1,14 +1,27 @@
+import idna
 import redis
 import base64
 from M2Crypto import X509
+
+import sys
+import signal
 
 red = redis.Redis(host='localhost', port=6379, charset="utf-8", decode_responses=True, db=3)
 
 sub = red.pubsub()    
 sub.subscribe('ct-certs', ignore_subscribe_messages=False) 
 
+cp = 0
+
+def signal_handler(sig, frame):
+    # print('You pressed Ctrl+C!')
+    print()
+    sys.exit(0)
+
 def get_ct():
-    global sub, red
+    global sub, red, cp
+
+    signal.signal(signal.SIGINT, signal_handler)
 
     try:
         m = sub.get_message()
@@ -45,13 +58,35 @@ def get_ct():
                     all_domains.append(aName)
 
             for domain in all_domains:
+                domain = deleteHead(domain)
+                try:
+                    domain = idna.decode(domain)
+                except:
+                    break
                 for letter in domain:
                     if ord(letter) > 127:
+                        # print(f"found one letter: {letter}\n")
                         if red.zscore("letters", letter):
                             red.zincrby("letters", 1, letter)
                         else:
                             red.zadd("letters", {letter: 1})
+                            cp += 1
+                            print(f"\r[+] Found {cp} differents letters", end="")
+
     
+
+# If domain begin with *
+def deleteHead(domain):
+    if domain.split(".")[0] == "*" or domain.split(".")[0] == "www":
+        locDomain = ""
+        for element in domain.split(".")[1:]:
+            locDomain += element + "."
+
+        locDomain = locDomain[:-1].rstrip("\n")
+
+        return locDomain
+    return domain
+
 
 
 while True:

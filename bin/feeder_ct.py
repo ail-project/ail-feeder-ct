@@ -1,10 +1,12 @@
 import os
 import re
+import sys
 import json
 import math
 import redis
 import base64
 import shutil
+import signal
 import pathlib
 import argparse
 import configparser
@@ -50,6 +52,9 @@ sub.subscribe('ct-certs', ignore_subscribe_messages=False)
 type_request = ['UNSPEC', 'MF', 'NSEC3PARAM', 'EUI64', 'NS', 'SPF', 'NSAP-PTR', 'MG', 'APL', 'TSIG', 'DS', 'TLSA', 'HIP', 'MINFO', 'CSYNC', 'ANY', 'RRSIG', 'CDS', 'NSAP', 'CAA', 'A', 'URI', 'A6', 'KEY', 'KX', 'EUI48', 'SSHFP', 'MAILA', 'RT', 'WKS', 'DLV', 'DNAME', 'PX', 'DHCID', 'MD', 'NULL', 'TA', 'SIG', 'NSEC3', 'MR', 'AXFR', 'CDNSKEY', 'NONE', 'MB', 'TKEY', 'RP', 'NXT', 'SRV', 'SOA', 'MX', 'GPOS', 'AFSDB', 'NAPTR', 'DNSKEY', 'TXT', 'HINFO', 'NSEC', 'IPSECKEY', 'CERT', 'X25', 'PTR', 'MAILB', 'CNAME', 'ISDN', 'AAAA', 'LOC', 'IXFR', 'OPT']
 
 
+
+def signal_handler(sig, frame):
+    sys.exit(0)
 
 
 def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns_resolve):
@@ -139,6 +144,8 @@ def dnsResolver(domain):
 
 def get_ct():
     global sub, red, matching_string
+
+    signal.signal(signal.SIGINT, signal_handler)
 
     try:
         m = sub.get_message()
