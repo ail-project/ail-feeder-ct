@@ -87,7 +87,7 @@ def webSiteTitleGrab(domain):
         response = requests.get(url)
 
         website_dict["url"] = url
-        website_dict["headers"] = response.headers
+        website_dict["headers"] = dict(response.headers)
 
         if response.history:
             website_dict["redirect"] = len(response.history)
