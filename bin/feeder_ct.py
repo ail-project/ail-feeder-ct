@@ -9,9 +9,11 @@ import shutil
 import signal
 import pathlib
 import argparse
+import requests
 import configparser
 import dns.resolver
 from M2Crypto import X509
+from bs4 import BeautifulSoup
 from ail_typo_squatting import runAll
 
 pathProg = pathlib.Path(__file__).parent.absolute()
@@ -47,17 +49,16 @@ sub = red.pubsub()
 sub.subscribe('ct-certs', ignore_subscribe_messages=False) 
 
 
-# common_names = ['www', 'mail', '', 'host', 'router', 'ns', 'gw', 'server', 'gateway']
-
 # RR
 type_request = ['UNSPEC', 'MF', 'NSEC3PARAM', 'EUI64', 'NS', 'SPF', 'NSAP-PTR', 'MG', 'APL', 'TSIG', 'DS', 'TLSA', 'HIP', 'MINFO', 'CSYNC', 'ANY', 'RRSIG', 'CDS', 'NSAP', 'CAA', 'A', 'URI', 'A6', 'KEY', 'KX', 'EUI48', 'SSHFP', 'MAILA', 'RT', 'WKS', 'DLV', 'DNAME', 'PX', 'DHCID', 'MD', 'NULL', 'TA', 'SIG', 'NSEC3', 'MR', 'AXFR', 'CDNSKEY', 'NONE', 'MB', 'TKEY', 'RP', 'NXT', 'SRV', 'SOA', 'MX', 'GPOS', 'AFSDB', 'NAPTR', 'DNSKEY', 'TXT', 'HINFO', 'NSEC', 'IPSECKEY', 'CERT', 'X25', 'PTR', 'MAILB', 'CNAME', 'ISDN', 'AAAA', 'LOC', 'IXFR', 'OPT']
 
-# Ctrl + c
 def signal_handler(sig, frame):
+    """Ctrl + c"""
     sys.exit(0)
 
-# Json creation
-def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns_resolve):
+
+def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns_resolve, website_dict):
+    """Json Creation"""
     json_output = dict()
     json_output["certificat"] = certificat
     json_output["domains"] = all_domains
@@ -67,14 +68,46 @@ def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns
     if dns_resolve:
         json_output["dns_resolve"] = dns_resolve
 
+    if website_dict:
+        json_output["website_info"] = website_dict
+
     # domainMatching = deleteHead(domainMatching)
 
     with open(os.path.join(pathOutput, domainMatching), "w") as write_file:
         json.dump(json_output, write_file)
 
 
-# Dns actions
+def webSiteTitleGrab(domain):
+    """Grab title of the web site if it's possible"""
+
+    website_dict = dict()
+
+    try:
+        url = f"https://{domain}"
+        response = requests.get(url)
+
+        website_dict["url"] = url
+        website_dict["headers"] = response.headers
+
+        if response.history:
+            website_dict["redirect"] = len(response.history)
+        
+        if "200" in str(response):
+            soup = BeautifulSoup(response.content, "html.parser")
+            title = soup.find_all('title', limit=1)
+            if title:
+                t = str(title[0])
+                t = t[7:]
+                t = t[:-8]
+                website_dict["website_title"] = t
+    except:
+        pass
+
+    return website_dict
+
+
 def dnsResolver(domain):
+    """DNS actions"""
 
     domain_resolve = dict()
 
@@ -92,58 +125,11 @@ def dnsResolver(domain):
         except:
             pass
 
-    """if domain.startswith('*'):
-        ip = dict()
-        ipv6 = dict()
-        for common_name in common_names:
-            dns_to_query = domain.replace("*", common_name)
-            if common_name == "":
-                dns_to_query = dns_to_query[1:]
-            try:
-                answer = resolver.resolve(dns_to_query, "A")
-                
-                ip[dns_to_query] = list()
-                for rdata in answer:
-                    ip[dns_to_query].append(rdata.to_text())
-            except:
-                pass
-
-            try:
-                answer = resolver.resolve(dns_to_query, "AAAA")
-
-                ipv6[dns_to_query] = list()
-                for rdata in answer:
-                    ipv6[dns_to_query].append(rdata.to_text())
-            except:
-                pass
-        if ip:
-            domain_resolve["ipv4"] = ip
-        if ipv6:
-            domain_resolve["ipv6"] = ipv6
-
-    else:
-        try:
-            answer = resolver.resolve(domain, "A")
-            ip = list()
-            for rdata in answer:
-                ip.append(rdata.to_text())
-            domain_resolve["ipv4"] = ip
-        except:
-            pass
-
-        try:
-            answer = resolver.resolve(domain, "AAAA")
-            ipv6 = list()
-            for rdata in answer:
-                ipv6.append(rdata.to_text())
-            domain_resolve["ipv6"] = ipv6
-        except:
-            pass"""
-
     return domain_resolve
 
 
 def get_ct():
+    """Core function"""
     global sub, red, matching_string
 
     signal.signal(signal.SIGINT, signal_handler)
@@ -202,7 +188,8 @@ def get_ct():
                                 print(f"{d} matching with {dm}")
 
                             dns_resolve = dnsResolver(domain)
-                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve)
+                            website = webSiteTitleGrab(domain)
+                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve, website)
                             break
 
                     elif len(domain.split(".")) >= len(dm.split(".")):
@@ -222,12 +209,14 @@ def get_ct():
                                 print(f"{d} matching with {dm}")
 
                             dns_resolve = dnsResolver(domain)
-                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve)
+                            website = webSiteTitleGrab(domain)
+                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve, website)
                             break
 
 
-# If domain begin with *
+
 def deleteHead(domain):
+    """If domains begins with *, delete the 2 first caracters"""
     if domain.split(".")[0] == "*":
         locDomain = ""
         for element in domain.split(".")[1:]:
