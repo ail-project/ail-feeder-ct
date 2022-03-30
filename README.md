@@ -86,7 +86,8 @@ if the dns resolving give no result, then the key "dns_resolve" will not be pres
     "domains": [], 
     "domain_matching": "", 
     "variation_matching": "", 
-    "dns_resolve": {"A": [], "MX": [], "TXT": [], ...}
+    "dns_resolve": {"A": [], "MX": [], "TXT": [], ...},
+    "website_info": {"headers":{...}, "redirect": 1, "website_title": ""}
 }
 ~~~~
 
