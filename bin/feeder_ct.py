@@ -84,7 +84,7 @@ def webSiteTitleGrab(domain):
 
     try:
         url = f"https://{domain}"
-        response = requests.get(url)
+        response = requests.get(url, verify=False)
 
         website_dict["url"] = url
         website_dict["headers"] = dict(response.headers)
