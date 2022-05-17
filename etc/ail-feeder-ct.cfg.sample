@@ -12,3 +12,6 @@ db = 0
 
 [certstream]
 url = 
+
+[virustotal]
+apikey = <YOURAPIKEY> 

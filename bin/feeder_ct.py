@@ -45,6 +45,9 @@ if 'redis' in config:
 else:
     red = redis.Redis(host='localhost', port=6379, charset="utf-8", decode_responses=True)
 
+if 'virustotal' in config:
+    vt_key = config['virustotal']['apikey']
+
 sub = red.pubsub()    
 sub.subscribe('ct-certs', ignore_subscribe_messages=False) 
 
@@ -57,7 +60,7 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 
-def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns_resolve, website_dict):
+def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns_resolve, website_dict, vt_result):
     """Json Creation"""
     json_output = dict()
     json_output["certificat"] = certificat
@@ -70,6 +73,9 @@ def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns
 
     if website_dict:
         json_output["website_info"] = website_dict
+    
+    if vt_result:
+        json_output["virus_total"] = vt_result
 
     # domainMatching = deleteHead(domainMatching)
 
@@ -105,6 +111,18 @@ def webSiteTitleGrab(domain):
 
     return website_dict
 
+def virusTotal(domain):
+    """Check domain on virus total"""
+
+    api_url = f'https://www.virustotal.com/api/v3/domains/{domain}'
+    headers = {'x-apikey' : vt_key}
+
+    response = requests.get(api_url, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+    return None
+
 
 def dnsResolver(domain):
     """DNS actions"""
@@ -128,7 +146,7 @@ def dnsResolver(domain):
     return domain_resolve
 
 
-def get_ct():
+def get_ct(vt):
     """Core function"""
     global sub, red, matching_string
 
@@ -210,7 +228,10 @@ def get_ct():
 
                             dns_resolve = dnsResolver(domain)
                             website = webSiteTitleGrab(domain)
-                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve, website)
+                            vt_result = None
+                            if vt:
+                                vt_result = virusTotal(domain)
+                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve, website, vt_result)
                             break
 
 
@@ -239,6 +260,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-ats", "--ail_typo_squatting", help="Generate Variations for list pass in entry", action="store_true")
     parser.add_argument("-ms", "--matching_string", help="Match domain name if variations are in the domain name in any position", action="store_true")
+    parser.add_argument("-vt", "--virustotal", help="Check domain on virus total", action="store_true")
 
     parser.add_argument("-o", "--output", help="path to ouput location, default: ../output")
     parser.add_argument("-v", help="verbose, more display", action="store_true")
@@ -284,6 +306,11 @@ if __name__ == "__main__":
     else:
         resultList = domainList
 
+    if args.virustotal:
+        vt = True
+    else:
+        vt = False
+
     # Call of the core function
     while True:
-        get_ct()
+        get_ct(vt)
