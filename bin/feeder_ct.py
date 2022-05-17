@@ -47,6 +47,8 @@ else:
 
 if 'virustotal' in config:
     vt_key = config['virustotal']['apikey']
+else:
+    vt_key = None
 
 sub = red.pubsub()    
 sub.subscribe('ct-certs', ignore_subscribe_messages=False) 
@@ -57,7 +59,7 @@ type_request = ['UNSPEC', 'MF', 'NSEC3PARAM', 'EUI64', 'NS', 'SPF', 'NSAP-PTR', 
 
 def signal_handler(sig, frame):
     """Ctrl + c"""
-    sys.exit(0)
+    exit(0)
 
 
 def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns_resolve, website_dict, vt_result):
@@ -207,7 +209,10 @@ def get_ct(vt):
 
                             dns_resolve = dnsResolver(domain)
                             website = webSiteTitleGrab(domain)
-                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve, website)
+                            vt_result = None
+                            if vt:
+                                vt_result = virusTotal(domain)
+                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve, website, vt_result)
                             break
 
                     elif len(domain.split(".")) >= len(dm.split(".")):
