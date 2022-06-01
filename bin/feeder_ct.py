@@ -119,7 +119,10 @@ def virusTotal(domain):
     api_url = f'https://www.virustotal.com/api/v3/domains/{domain}'
     headers = {'x-apikey' : vt_key}
 
-    response = requests.get(api_url, headers=headers)
+    try:
+        response = requests.get(api_url, headers=headers)
+    except requests.exceptions.ConnectionError:
+        return None
 
     if response.status_code == 200:
         return response.json()
