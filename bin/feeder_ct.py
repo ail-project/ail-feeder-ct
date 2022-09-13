@@ -16,6 +16,9 @@ from M2Crypto import X509
 from bs4 import BeautifulSoup
 from ail_typo_squatting import runAll
 
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 pathProg = pathlib.Path(__file__).parent.absolute()
 
 pathWork = ""
@@ -59,7 +62,7 @@ type_request = ['UNSPEC', 'MF', 'NSEC3PARAM', 'EUI64', 'NS', 'SPF', 'NSAP-PTR', 
 
 def signal_handler(sig, frame):
     """Ctrl + c"""
-    exit(0)
+    sys.exit(0)
 
 
 def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns_resolve, website_dict, vt_result):
@@ -129,7 +132,7 @@ def virusTotal(domain):
     return None
 
 
-def dnsResolver(domain):
+def dnsResolver(domain, first_domains_list):
     """DNS actions"""
 
     domain_resolve = dict()
@@ -144,6 +147,26 @@ def dnsResolver(domain):
             loc = list()
             for rdata in answer:
                 loc.append(rdata.to_text())
+
+            if t == 'CNAME':
+                for element in loc:
+                    flag = True
+                    for d in first_domains_list:
+                        if not element.endswith(d + '.'):
+                            flag = False
+                        else:
+                            flag = True
+                    if not flag:
+                        s = ''
+                        for d in first_domains_list:
+                            s += f'{d}, '
+                        s = s[:-2]
+                        print("******************************************************************")
+                        print(f"** CNAME: \'{element}\' **")
+                        print("** Doesn't contain any of initial domains: **")
+                        print(f"** {s} **")
+                        print("******************************************************************")
+
             domain_resolve[t] = loc
         except:
             pass
@@ -151,7 +174,7 @@ def dnsResolver(domain):
     return domain_resolve
 
 
-def get_ct(vt):
+def get_ct(vt, first_domains_list):
     """Core function"""
     global sub, red, matching_string
 
@@ -210,7 +233,7 @@ def get_ct(vt):
                                 d = domain.rstrip('\n')
                                 print(f"{d} matching with {dm}")
 
-                            dns_resolve = dnsResolver(domain)
+                            dns_resolve = dnsResolver(domain, first_domains_list)
                             website = webSiteTitleGrab(domain)
                             vt_result = None
                             if vt:
@@ -234,7 +257,7 @@ def get_ct(vt):
                                 d = domain.rstrip('\n')
                                 print(f"{d} matching with {dm}")
 
-                            dns_resolve = dnsResolver(domain)
+                            dns_resolve = dnsResolver(domain, first_domains_list)
                             website = webSiteTitleGrab(domain)
                             vt_result = None
                             if vt:
@@ -299,6 +322,8 @@ if __name__ == "__main__":
         exit(-1)
 
     resultList = list()
+
+    first_domains_list = domainList.copy()
     
     # Generation of variations
     if args.ail_typo_squatting:
@@ -321,4 +346,4 @@ if __name__ == "__main__":
 
     # Call of the core function
     while True:
-        get_ct(vt)
+        get_ct(vt, first_domains_list)
