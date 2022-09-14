@@ -1,23 +1,28 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import argparse
+import base64
+import configparser
 import os
 import re
 import sys
 import json
 import math
 import redis
-import base64
 import shutil
 import signal
 import pathlib
-import argparse
-import requests
-import configparser
 import dns.resolver
+
 from M2Crypto import X509
 from bs4 import BeautifulSoup
-from ail_typo_squatting import runAll
 
+import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+from ail_typo_squatting import runAll
 
 pathProg = pathlib.Path(__file__).parent.absolute()
 
@@ -53,8 +58,8 @@ if 'virustotal' in config:
 else:
     vt_key = None
 
-sub = red.pubsub()    
-sub.subscribe('ct-certs', ignore_subscribe_messages=False) 
+sub = red.pubsub()
+sub.subscribe('ct-certs', ignore_subscribe_messages=False)
 
 
 # RR
@@ -72,13 +77,13 @@ def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns
     json_output["domains"] = all_domains
     json_output["domain_matching"] = domainMatching
     json_output["variation_matching"] = variationMatching
-    
+
     if dns_resolve:
         json_output["dns_resolve"] = dns_resolve
 
     if website_dict:
         json_output["website_info"] = website_dict
-    
+
     if vt_result:
         json_output["virus_total"] = vt_result
 
@@ -102,7 +107,7 @@ def webSiteTitleGrab(domain):
 
         if response.history:
             website_dict["redirect"] = len(response.history)
-        
+
         if "200" in str(response):
             soup = BeautifulSoup(response.content, "html.parser")
             title = soup.find_all('title', limit=1)
@@ -140,7 +145,7 @@ def dnsResolver(domain, first_domains_list):
     resolver = dns.resolver.Resolver()
     resolver.timeout = 0.2
     resolver.lifetime = 0.2
-    
+
     for t in type_request:
         try:
             answer = resolver.resolve(domain, t)
@@ -174,7 +179,7 @@ def dnsResolver(domain, first_domains_list):
     return domain_resolve
 
 
-def get_ct(vt, first_domains_list):
+def get_ct(vt, first_domains_list, pyail):
     """Core function"""
     global sub, red, matching_string
 
@@ -235,6 +240,8 @@ def get_ct(vt, first_domains_list):
 
                             dns_resolve = dnsResolver(domain, first_domains_list)
                             website = webSiteTitleGrab(domain)
+                            if pyail:
+                                pyail.crawl_url(domain, har=True, screenshot=True)
                             vt_result = None
                             if vt:
                                 vt_result = virusTotal(domain)
@@ -259,6 +266,8 @@ def get_ct(vt, first_domains_list):
 
                             dns_resolve = dnsResolver(domain, first_domains_list)
                             website = webSiteTitleGrab(domain)
+                            if pyail:
+                                pyail.crawl_url(domain, har=True, screenshot=True)
                             vt_result = None
                             if vt:
                                 vt_result = virusTotal(domain)
@@ -289,6 +298,7 @@ if __name__ == "__main__":
     parser.add_argument("-dn", "--domainName", nargs="+", help="list of domain name")
     parser.add_argument("-fdn", "--filedomainName", help="file containing list of domain name")
 
+    parser.add_argument("-a", "--ail", help="Send domain to AIL crawler", action="store_true")
     parser.add_argument("-ats", "--ail_typo_squatting", help="Generate Variations for list pass in entry", action="store_true")
     parser.add_argument("-ms", "--matching_string", help="Match domain name if variations are in the domain name in any position", action="store_true")
     parser.add_argument("-vt", "--virustotal", help="Check domain on virus total", action="store_true")
@@ -297,6 +307,10 @@ if __name__ == "__main__":
     parser.add_argument("-v", help="verbose, more display", action="store_true")
 
     args = parser.parse_args()
+
+    if not args.domainName or args.filedomainName:
+        parser.print_help()
+        sys.exit(0)
 
     domainList = list()
 
@@ -324,7 +338,7 @@ if __name__ == "__main__":
     resultList = list()
 
     first_domains_list = domainList.copy()
-    
+
     # Generation of variations
     if args.ail_typo_squatting:
         pathTrash = pathWork + "trash"
@@ -334,10 +348,20 @@ if __name__ == "__main__":
         for domain in domainList:
             print(f"\n **** Variations Generations for {domain} ****")
             resultList = runAll(domain, math.inf, formatoutput="text", pathOutput=pathTrash, verbose=verbose)
-        
+
         shutil.rmtree(pathTrash)
     else:
         resultList = domainList
+
+    if args.ail:
+        try:
+            pyail = PyAIL(ail_url, ail_key, ssl=ail_verifycert)
+        except Exception as e:
+            print('[ERROR] Unable to connect to AIL Framework API. Please check [AIL] url, apikey and verifycert in '
+                  '../etc/conf.cfg.\n')
+            sys.exit(0)
+    else:
+        pyail = False
 
     if args.virustotal:
         vt = True
@@ -346,4 +370,4 @@ if __name__ == "__main__":
 
     # Call of the core function
     while True:
-        get_ct(vt, first_domains_list)
+        get_ct(vt, first_domains_list, pyail)

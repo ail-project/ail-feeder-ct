@@ -7,6 +7,7 @@ import datetime
 import certstream
 import redis
 import configparser
+from pyail import PyAIL
 
 ## Config
 pathConf = '../etc/ail-feeder-ct.cfg'
@@ -46,6 +47,6 @@ def print_callback(message, context):
             r.publish('ct-certs', u"{}\n".format(cert_der))
 
             sys.stdout.flush()
-        
+
 
 certstream.listen_for_events(print_callback, url=certstreamUrl)
