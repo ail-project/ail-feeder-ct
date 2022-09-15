@@ -4,3 +4,4 @@ dnspython
 redis
 pyail
 M2Crypto
+beautifulsoup4

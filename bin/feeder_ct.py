@@ -24,6 +24,8 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 from ail_typo_squatting import runAll
 
+from pyail import PyAIL
+
 pathProg = pathlib.Path(__file__).parent.absolute()
 
 pathWork = ""
@@ -321,8 +323,9 @@ if __name__ == "__main__":
     # Path for json output
     pathOutput = args.output
     if not pathOutput:
-        if not os.path.isdir(pathWork + "output"):
-            os.mkdir(pathWork + "output")
+        pathOutput = os.path.join(pathWork, "output")
+        if not os.path.isdir(pathOutput):
+            os.mkdir(pathOutput)
 
     # Domain name to process
     if args.filedomainName:

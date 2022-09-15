@@ -13,6 +13,19 @@ For the generation of domain name variations: [ail-typo-squatting](https://githu
 - [cerstream](https://github.com/CaliDog/certstream-python)
 - [dnspython](https://github.com/rthalley/dnspython)
 - [ail-typo-squatting](https://github.com/ail-project/ail-typo-squatting)
+- [pyail](https://github.com/ail-project/PyAIL)
+- [beautifulsoup4](https://pypi.org/project/beautifulsoup4/)
+- [M2Crypto](https://github.com/mcepl/M2Crypto)
+
+
+
+For M2Crypto:
+
+~~~bash
+sudo apt-get install libssl-dev swig python3-dev gcc
+~~~
+
+
 
 
 
@@ -28,27 +41,33 @@ If a variation match with an entry from redis db, then the variation is send to 
 
 ~~~~shell
 dacru@dacru:~/git/ail-feeder-ct/bin$ python3 feeder_ct.py --help  
+usage: feeder_ct.py [-h] [-dn DOMAINNAME [DOMAINNAME ...]] [-fdn FILEDOMAINNAME] [-a] [-ats] [-ms] [-vt] [-o OUTPUT] [-v]
 
-usage: feeder_ct.py [-h] [-dn DOMAINNAME [DOMAINNAME ...]] [-fdn FILEDOMAINNAME] [-ats] [-ms] [-o OUTPUT] [-v]
-
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -dn DOMAINNAME [DOMAINNAME ...], --domainName DOMAINNAME [DOMAINNAME ...]
                         list of domain name
   -fdn FILEDOMAINNAME, --filedomainName FILEDOMAINNAME
                         file containing list of domain name
+  -a, --ail             Send domain to AIL crawler
   -ats, --ail_typo_squatting
                         Generate Variations for list pass in entry
   -ms, --matching_string
                         Match domain name if variations are in the domain name in any position
+  -vt, --virustotal     Check domain on virus total
   -o OUTPUT, --output OUTPUT
                         path to ouput location, default: ../output
   -v                    verbose, more display
+
 ~~~~
 
 
 
 # Example of use
+
+<b>First of all</b> `ct.py` need to be run.
+
+
 
 Need to pass a text file, where each line is a variation of the original domain name. Variations can be generate at this repository: [ail-typo-squatting](https://github.com/ail-project/ail-typo-squatting)
 

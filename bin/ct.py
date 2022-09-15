@@ -7,7 +7,6 @@ import datetime
 import certstream
 import redis
 import configparser
-from pyail import PyAIL
 
 ## Config
 pathConf = '../etc/ail-feeder-ct.cfg'
