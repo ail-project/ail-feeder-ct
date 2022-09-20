@@ -41,7 +41,7 @@ If a variation match with an entry from redis db, then the variation is send to 
 
 ~~~~shell
 dacru@dacru:~/git/ail-feeder-ct/bin$ python3 feeder_ct.py --help  
-usage: feeder_ct.py [-h] [-dn DOMAINNAME [DOMAINNAME ...]] [-fdn FILEDOMAINNAME] [-a] [-ats] [-ms] [-vt] [-o OUTPUT] [-v]
+usage: feeder_ct.py [-h] [-dn DOMAINNAME [DOMAINNAME ...]] [-fdn FILEDOMAINNAME] [-a] [-ats] [-ms] [-vt] [-w] [-o OUTPUT] [-v]
 
 options:
   -h, --help            show this help message and exit
@@ -55,6 +55,7 @@ options:
   -ms, --matching_string
                         Match domain name if variations are in the domain name in any position
   -vt, --virustotal     Check domain on virus total
+  -w, --warning			If CNAME is not the same as the matching domain then send a warning to Ail or just display a message.
   -o OUTPUT, --output OUTPUT
                         path to ouput location, default: ../output
   -v                    verbose, more display

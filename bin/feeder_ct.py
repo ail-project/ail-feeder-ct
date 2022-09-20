@@ -45,6 +45,8 @@ else:
 
 if 'general' in config:
     uuid = config['general']['uuid']
+else:
+    uuid = '1b43a925-a58e-4716-897f-bbbb9eb3ea9a'
 
 if 'ail' in config:
     ail_url = config['ail']['url']
@@ -88,8 +90,6 @@ def jsonCreation(all_domains, domainMatching, variationMatching, certificat, dns
 
     if vt_result:
         json_output["virus_total"] = vt_result
-
-    # domainMatching = deleteHead(domainMatching)
 
     with open(os.path.join(pathOutput, domainMatching), "w") as write_file:
         json.dump(json_output, write_file)
@@ -139,7 +139,7 @@ def virusTotal(domain):
     return None
 
 
-def dnsResolver(domain, first_domains_list):
+def dnsResolver(domain, domain_matching, warning, verbose, pyail):
     """DNS actions"""
 
     domain_resolve = dict()
@@ -155,24 +155,24 @@ def dnsResolver(domain, first_domains_list):
             for rdata in answer:
                 loc.append(rdata.to_text())
 
-            if t == 'CNAME':
-                for element in loc:
-                    flag = True
-                    for d in first_domains_list:
-                        if not element.endswith(d + '.'):
-                            flag = False
-                        else:
-                            flag = True
-                    if not flag:
-                        s = ''
-                        for d in first_domains_list:
-                            s += f'{d}, '
-                        s = s[:-2]
-                        print("******************************************************************")
-                        print(f"** CNAME: \'{element}\' **")
-                        print("** Doesn't contain any of initial domains: **")
-                        print(f"** {s} **")
-                        print("******************************************************************")
+            if warning:
+                if t == 'CNAME':
+                    for element in loc:
+                        if not element.endswith(domain_matching + '.'):
+                            if pyail:
+                                meta_dict = {}
+                                meta_dict["ct:domain_matching"] = domain_matching
+                                meta_dict["ct:domain_catch"] = domain
+                                meta_dict["ct:cname_alert"] = True
+                                source = 'feeder-ct'
+                                source_uuid = uuid
+                                pyail.feed_json_item(f"europa.eu\n {element}", meta_dict, source, source_uuid, 'utf-8')
+                            if verbose:
+                                print("******************************************************************")
+                                print(f"** CNAME: \'{element}\' **")
+                                print("** Doesn't contain any of initial domains: **")
+                                print(f"** {domain_matching} **")
+                                print("******************************************************************")
 
             domain_resolve[t] = loc
         except:
@@ -181,9 +181,26 @@ def dnsResolver(domain, first_domains_list):
     return domain_resolve
 
 
-def get_ct(vt, first_domains_list, pyail):
+def domainFind(domain, dm, m, all_domains, vt, warning, verbose, pyail):
+    dns_resolve = dict()
+    if verbose:
+        print("\n!!! FIND A DOMAIN !!!")
+        d = domain.rstrip('\n')
+        print(f"{d} matching with {dm}")
+
+    dns_resolve = dnsResolver(domain, dm, warning, verbose, pyail)
+    website = webSiteTitleGrab(domain)
+    if pyail:
+        pyail.crawl_url(domain, har=True, screenshot=True)
+    vt_result = None
+    if vt:
+        vt_result = virusTotal(domain)
+    jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve, website, vt_result)
+
+
+def get_ct(vt, matching_string, warning, verbose, pyail):
     """Core function"""
-    global sub, red, matching_string
+    global sub, red
 
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -233,21 +250,7 @@ def get_ct(vt, first_domains_list, pyail):
                     # If ms option if choose
                     if matching_string:
                         if dm in domain:
-                            dns_resolve = dict()
-
-                            if verbose:
-                                print("\n!!! FIND A DOMAIN !!!")
-                                d = domain.rstrip('\n')
-                                print(f"{d} matching with {dm}")
-
-                            dns_resolve = dnsResolver(domain, first_domains_list)
-                            website = webSiteTitleGrab(domain)
-                            if pyail:
-                                pyail.crawl_url(domain, har=True, screenshot=True)
-                            vt_result = None
-                            if vt:
-                                vt_result = virusTotal(domain)
-                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve, website, vt_result)
+                            domainFind(domain, dm, m, all_domains, vt, warning, verbose, pyail)
                             break
 
                     elif len(domain.split(".")) >= len(dm.split(".")):
@@ -259,21 +262,7 @@ def get_ct(vt, first_domains_list, pyail):
                         reduceDm[-1] = reduceDm[-1].rstrip("\n")
 
                         if reduceDm == dm.split("."):
-                            dns_resolve = dict()
-
-                            if verbose:
-                                print("\n!!! FIND A DOMAIN !!!")
-                                d = domain.rstrip('\n')
-                                print(f"{d} matching with {dm}")
-
-                            dns_resolve = dnsResolver(domain, first_domains_list)
-                            website = webSiteTitleGrab(domain)
-                            if pyail:
-                                pyail.crawl_url(domain, har=True, screenshot=True)
-                            vt_result = None
-                            if vt:
-                                vt_result = virusTotal(domain)
-                            jsonCreation(all_domains, domain, dm, m['data'].rstrip(), dns_resolve, website, vt_result)
+                            domainFind(domain, dm, m, all_domains, vt, warning, verbose, pyail)
                             break
 
 
@@ -286,8 +275,8 @@ def deleteHead(domain):
             locDomain += element + "."
 
         locDomain = locDomain[:-1].rstrip("\n")
-
         return locDomain
+
     return domain
 
 
@@ -304,9 +293,10 @@ if __name__ == "__main__":
     parser.add_argument("-ats", "--ail_typo_squatting", help="Generate Variations for list pass in entry", action="store_true")
     parser.add_argument("-ms", "--matching_string", help="Match domain name if variations are in the domain name in any position", action="store_true")
     parser.add_argument("-vt", "--virustotal", help="Check domain on virus total", action="store_true")
+    parser.add_argument("-w", "--warning", help="If CNAME is not the same as the matching domain then send a warning to AIL or just display a message", action="store_true")
 
     parser.add_argument("-o", "--output", help="path to ouput location, default: ../output")
-    parser.add_argument("-v", help="verbose, more display", action="store_true")
+    parser.add_argument("-v", "--verbose", help="verbose, more display", action="store_true")
 
     args = parser.parse_args()
 
@@ -317,8 +307,9 @@ if __name__ == "__main__":
     domainList = list()
 
     matching_string = args.matching_string
-
-    verbose = args.v
+    verbose = args.verbose
+    vt = args.virustotal
+    warning = args.warning
 
     # Path for json output
     pathOutput = args.output
@@ -338,13 +329,23 @@ if __name__ == "__main__":
         print("[-] No domain name given")
         exit(-1)
 
-    resultList = list()
+    if args.ail:
+        try:
+            pyail = PyAIL(ail_url, ail_key, ssl=False)
+        except Exception as e:
+            print('[ERROR] Unable to connect to AIL Framework API. Please check [AIL] url, apikey and verifycert in '
+                  '../etc/conf.cfg.\n')
+            sys.exit(0)
+    else:
+        pyail = False
 
-    first_domains_list = domainList.copy()
+
+
+    resultList = list()
 
     # Generation of variations
     if args.ail_typo_squatting:
-        pathTrash = pathWork + "trash"
+        pathTrash = os.path.join(pathWork, "trash")
         if not os.path.isdir(pathTrash):
             os.mkdir(pathTrash)
 
@@ -356,21 +357,6 @@ if __name__ == "__main__":
     else:
         resultList = domainList
 
-    if args.ail:
-        try:
-            pyail = PyAIL(ail_url, ail_key, ssl=ail_verifycert)
-        except Exception as e:
-            print('[ERROR] Unable to connect to AIL Framework API. Please check [AIL] url, apikey and verifycert in '
-                  '../etc/conf.cfg.\n')
-            sys.exit(0)
-    else:
-        pyail = False
-
-    if args.virustotal:
-        vt = True
-    else:
-        vt = False
-
     # Call of the core function
     while True:
-        get_ct(vt, first_domains_list, pyail)
+        get_ct(vt, matching_string, warning, verbose, pyail)
