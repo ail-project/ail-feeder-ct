@@ -1,11 +1,10 @@
 [tool.poetry]
 name = "ail-feeder-ct"
 version = "0.1.0"
-description = ""
+description = "This AIL feeder is a generic software to extract informations from certificate transparency"
 authors = ["Aurelien Thirion (terrtia) <aurelien.thirion@circl.lu>","David Cruciani <david.cruciani@securitymadein.lu>"
 ]
 readme = "README.md"
-packages = [{include = "ail_feeder_ct"}]
 
 repository = "https://github.com/ail-project/ail-feeder-ct"
 
