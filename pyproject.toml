@@ -5,7 +5,7 @@ description = ""
 authors = ["Aurelien Thirion (terrtia) <aurelien.thirion@circl.lu>","David Cruciani <david.cruciani@securitymadein.lu>"
 ]
 readme = "README.md"
-packages = [{include = "ail_feeder_ct}]
+packages = [{include = "ail_feeder_ct}"]
 
 repository = "https://github.com/ail-project/ail-feeder-ct"
 
