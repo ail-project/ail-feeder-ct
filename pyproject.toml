@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "ail-feeder-ct"
+version = "0.1.0"
+description = ""
+authors = ["Aurelien Thirion (terrtia) <aurelien.thirion@circl.lu>","David Cruciani <david.cruciani@securitymadein.lu>"
+]
+readme = "README.md"
+packages = [{include = "ail_feeder_ct}]
+
+repository = "https://github.com/ail-project/ail-feeder-ct"
+
+[tool.poetry.scripts]
+ail-feeder-ct = 'ail-feeder-ct:main'
+
+[tool.poetry.dependencies]
+python = "^3.10"
+redis = ">=4.6"
+certstream = ">=1.12"
+dnspython = ">=2.4.1"
+ail-typo-squatting = ">=2.4.1"
+pyail = ">=0"
+beautifulsoup4 = ">=4.12.2"
+M2Crypto = "^0.38.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
