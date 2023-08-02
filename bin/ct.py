@@ -17,18 +17,19 @@ if os.path.isfile(pathConf):
 else:
     print("[-] No conf file found")
     exit(-1)
-
+## Redis Config
 if 'redis' in config:
     r = redis.Redis(host=config['redis']['host'], port=config['redis']['port'], db=config['redis']['db'])
 else:
     r = redis.Redis(host='localhost', port=6379, db=0)
-
-if 'cerstream' in config:
+    
+## CertStream URL config
+if 'certstream' in config:
     certstreamUrl = config['certstream']['url']
 else:
-    certstreamUrl = 'ws://crd.circl.lu:4000/full-stream'
+    certstreamUrl = 'wss://crd.circl.lu:4000/full-stream' # <--This stream is NOT publicly available
 
-
+## CertStream data retrieval
 def print_callback(message, context):
 
     if message['message_type'] == "heartbeat":
@@ -40,7 +41,7 @@ def print_callback(message, context):
 
         if len(all_domains) != 0:
 
-            sys.stdout.write(u"[{}] {} (SAN: {})\n".format(datetime.datetime.now().strftime('%m/%d/%y %H:%M:%S'), all_domains[0], ", ".join(all_domains[1:])))
+            sys.stdout.write(u"[{}] {} (SAN: {})\n".format(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'), all_domains[0], ", ".join(all_domains[1:])))
 
             cert_der = str(message['data']['leaf_cert']['as_der'])
             r.publish('ct-certs', u"{}\n".format(cert_der))
