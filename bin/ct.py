@@ -24,10 +24,14 @@ else:
     r = redis.Redis(host='localhost', port=6379, db=0)
     
 ## CertStream URL config
-if 'certstream' in config:
+if len(config['certstream']['url']) >= 1:
     certstreamUrl = config['certstream']['url']
+    print("Using Config file CertStream server:")
+    print(certstreamUrl)
 else:
     certstreamUrl = 'wss://certstream.calidog.io/full-stream' # <--This stream is publicly available
+    print("Using fallback CertStream:")
+    print(certstreamUrl)
 
 ## CertStream data retrieval
 def print_callback(message, context):
