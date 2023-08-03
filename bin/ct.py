@@ -27,7 +27,7 @@ else:
 if 'certstream' in config:
     certstreamUrl = config['certstream']['url']
 else:
-    certstreamUrl = 'wss://crd.circl.lu:4000/full-stream' # <--This stream is NOT publicly available
+    certstreamUrl = 'wss://certstream.calidog.io/full-stream' # <--This stream is publicly available
 
 ## CertStream data retrieval
 def print_callback(message, context):
